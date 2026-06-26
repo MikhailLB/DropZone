@@ -1,6 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+    Permit cleartext on the base config because partner redirect chains
+    occasionally hop through plain-HTTP intermediates. The trust anchor
+    stays "system" so unknown CAs are still rejected.
+-->
 <network-security-config>
-    <base-config cleartextTrafficPermitted="false">
+    <base-config cleartextTrafficPermitted="true">
         <trust-anchors>
             <certificates src="system"/>
         </trust-anchors>

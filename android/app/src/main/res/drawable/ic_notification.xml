@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Monochrome flame glyph used by Firebase Messaging for the small
+    notification icon (status bar + collapsed shade). Must be all-white
+    on a transparent background — Android masks it to the user's accent
+    colour. Anything coloured shows up as a featureless white square.
+
+    Distinct from the launcher mipmap by design (Play policy forbids
+    using the colour launcher icon for notification slots since SDK 21).
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M12.5,2.2 C12.7,3.6 13.2,4.9 14.0,6.0 C15.1,7.6 16.6,8.9 17.5,10.7 C18.6,12.7 18.4,15.3 17.0,17.1 C15.5,19.0 13.1,20.0 10.7,19.8 C8.4,19.6 6.2,18.3 5.1,16.3 C4.0,14.3 4.1,11.7 5.4,9.8 C6.0,8.9 6.8,8.1 7.4,7.2 C7.2,8.5 7.6,9.9 8.6,10.8 C9.4,11.5 10.5,11.7 11.4,11.4 C10.5,10.2 10.1,8.6 10.5,7.1 C10.9,5.4 11.9,3.9 12.5,2.2 Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M11.2,14.0 C11.8,14.6 12.7,14.7 13.4,14.3 C13.3,15.1 12.9,15.9 12.2,16.4 C11.4,17.0 10.4,17.0 9.6,16.5 C9.0,16.1 8.7,15.4 8.8,14.7 C9.4,15.0 10.2,15.0 10.7,14.5 C10.9,14.4 11.1,14.2 11.2,14.0 Z" />
+</vector>

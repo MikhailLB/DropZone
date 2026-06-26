@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../env/shell_settings.dart';
 import '../game_data.dart';
+import '../stages/doc_stage.dart';
 import '../theme.dart';
 import '../game/sprites.dart';
 import '../widgets/neon_background.dart';
 import 'level_select_screen.dart';
 import 'shop_screen.dart';
-import 'web_screen.dart';
 
 class MenuScreen extends StatelessWidget {
   final GameData data;
@@ -156,17 +157,17 @@ class MenuScreen extends StatelessWidget {
         ),
         _smallButton(Icons.privacy_tip_outlined, 'Privacy', () {
           Navigator.of(context).push(MaterialPageRoute(
-            builder: (_) => const WebScreen(
+            builder: (_) => const DocStage(
               title: 'Privacy Policy',
-              url: 'https://drropzonne.com/privacy-policy.html',
+              url: ShellSettings.privacyUrl,
             ),
           ));
         }),
         _smallButton(Icons.support_agent_rounded, 'Support', () {
           Navigator.of(context).push(MaterialPageRoute(
-            builder: (_) => const WebScreen(
+            builder: (_) => const DocStage(
               title: 'Support',
-              url: 'https://drropzonne.com/support.html',
+              url: ShellSettings.supportUrl,
             ),
           ));
         }),

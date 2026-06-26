@@ -1,14 +1,42 @@
+import 'package:firebase_app_check/firebase_app_check.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import 'game_data.dart';
-import 'theme.dart';
+import 'app_root.dart';
 import 'game/sprites.dart';
-import 'screens/loading_screen.dart';
+import 'game_data.dart';
+import 'shell/alert_bridge.dart';
+import 'shell/analytics_pipe.dart';
+import 'shell/beacon_post.dart';
+import 'shell/locker_vault.dart';
+import 'shell/reach_probe.dart';
+import 'shell/traffic_agent.dart';
+import 'theme.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // UI chrome tweaks — no orientation changes here; manifest controls it.
+
+  // Firebase + App Check — silent if google-services.json missing.
+  try {
+    await Firebase.initializeApp();
+    await FirebaseAppCheck.instance.activate(
+      androidProvider: kDebugMode
+          ? AndroidProvider.debug
+          : AndroidProvider.playIntegrity,
+    );
+  } catch (_) {
+    // App continues with no remote messaging — the shell tolerates it.
+  }
+
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+    DeviceOrientation.landscapeLeft,
+    DeviceOrientation.landscapeRight,
+  ]);
+
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,
     statusBarBrightness: Brightness.dark,
@@ -17,35 +45,30 @@ void main() {
     systemNavigationBarIconBrightness: Brightness.light,
   ));
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-  runApp(const DropZoneApp());
-}
 
-class DropZoneApp extends StatefulWidget {
-  const DropZoneApp({super.key});
+  // Compose the shell.
+  await trafficAgent.bootstrap();
 
-  @override
-  State<DropZoneApp> createState() => _DropZoneAppState();
-}
+  final vault = LockerVault();
+  await vault.prepare();
 
-class _DropZoneAppState extends State<DropZoneApp> {
-  final GameData _data = GameData();
-  final GameSprites _sprites = GameSprites();
+  final reach = ReachProbe();
+  final pipe = AnalyticsPipe();
+  final beacon = BeaconPost(vault);
+  final alerts = AlertBridge(vault);
 
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Drop Zone',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        useMaterial3: true,
-        scaffoldBackgroundColor: DZColors.bg,
-        colorScheme: const ColorScheme.dark(
-          surface: DZColors.bg,
-          primary: DZColors.cyan,
-        ),
-        fontFamily: 'Roboto',
-      ),
-      home: LoadingScreen(data: _data, sprites: _sprites),
-    );
-  }
+  // Arcade-side dependencies — created up front so the boot dispatcher can
+  // hand them straight to the menu when the user is "arcade".
+  final arcadeData = GameData();
+  final arcadeSprites = GameSprites();
+
+  runApp(DropZoneShellApp(
+    vault: vault,
+    reach: reach,
+    pipe: pipe,
+    beacon: beacon,
+    alerts: alerts,
+    arcadeData: arcadeData,
+    arcadeSprites: arcadeSprites,
+  ));
 }
