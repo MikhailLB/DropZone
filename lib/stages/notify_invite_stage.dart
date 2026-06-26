@@ -284,6 +284,13 @@ class _SkipControl extends StatefulWidget {
 }
 
 class _SkipControlState extends State<_SkipControl> {
+  // Solid panel colour matches the DropZone neon theme dark surface.
+  // Picked here rather than imported so this stage stays decoupled from
+  // theme.dart — keeps the shell-side widgets self-contained.
+  static const Color _surfaceIdle = Color(0xFF14142A);
+  static const Color _surfacePressed = Color(0xFF0E0E1F);
+  static const Color _border = Color(0xFFA8A8C2);
+
   bool _pressed = false;
 
   @override
@@ -295,17 +302,27 @@ class _SkipControlState extends State<_SkipControl> {
         widget.onTap();
       },
       onTapCancel: () => setState(() => _pressed = false),
-      child: AnimatedOpacity(
-        opacity: _pressed ? 0.55 : 0.95,
+      child: AnimatedScale(
+        scale: _pressed ? 0.97 : 1.0,
         duration: const Duration(milliseconds: 90),
-        child: DecoratedBox(
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 90),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
-            color: Colors.black.withValues(alpha: 0.35),
+            // Fully opaque dark surface — no alpha on either layer so the
+            // webp backdrop never bleeds through.
+            color: _pressed ? _surfacePressed : _surfaceIdle,
             border: Border.all(
-              color: Colors.white.withValues(alpha: 0.55),
-              width: 1.2,
+              color: _border,
+              width: 1.4,
             ),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x66000000),
+                blurRadius: 6,
+                offset: Offset(0, 3),
+              ),
+            ],
           ),
           child: const Padding(
             padding: EdgeInsets.symmetric(vertical: 12),

@@ -71,14 +71,6 @@ class ShellSettings {
   /// stream reports "none". Hides VPN reconnects and OS-driven blips.
   static const Duration offlineDebounce = Duration(milliseconds: 700);
 
-  /// Browser User-Agent suffix injected by the TrafficAgent. Concatenated
-  /// after the standard browser UA so requests carry the app identity.
-  /// Format: `appid/<bundleId> appname/<DisplayNameToken>`.
-  static String get userAgentSuffix {
-    final token = displayName.replaceAll(RegExp(r'\s+'), '');
-    return 'appid/$bundleId appname/$token';
-  }
-
   /// Used as an internal sanity check for the codec — if this fails the
   /// seed bytes were tampered with.
   static bool codecSelfCheck() {

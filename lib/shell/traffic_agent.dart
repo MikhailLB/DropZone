@@ -3,8 +3,6 @@ import 'dart:io';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:http/http.dart' as http;
 
-import '../env/shell_settings.dart';
-
 // ─────────────────────────────────────────────────────────────────────────────
 // TRAFFIC AGENT — outgoing HTTP wrapper with a real-device User-Agent
 // ─────────────────────────────────────────────────────────────────────────────
@@ -103,10 +101,9 @@ class TrafficAgent extends http.BaseClient {
   }) {
     final chrome = _decodeChrome();
     final webkit = _decodeWebkit();
-    final core = 'Mozilla/5.0 (Linux; Android $sdk; $brand $model '
+    return 'Mozilla/5.0 (Linux; Android $sdk; $brand $model '
         'Build/$buildTag) AppleWebKit/$webkit (KHTML, like Gecko) '
         'Chrome/$chrome Mobile Safari/$webkit';
-    return '$core ${ShellSettings.userAgentSuffix}';
   }
 
   String _composeIosUa({
@@ -114,10 +111,9 @@ class TrafficAgent extends http.BaseClient {
     required String marketingVersion,
   }) {
     final webkit = _decodeWebkit();
-    final core = 'Mozilla/5.0 (iPhone; CPU iPhone OS $systemVersionUnderscore '
+    return 'Mozilla/5.0 (iPhone; CPU iPhone OS $systemVersionUnderscore '
         'like Mac OS X) AppleWebKit/$webkit (KHTML, like Gecko) '
         'Version/$marketingVersion Mobile/15E148 Safari/$webkit';
-    return '$core ${ShellSettings.userAgentSuffix}';
   }
 
   @override

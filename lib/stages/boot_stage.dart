@@ -64,42 +64,71 @@ class BootStage extends StatefulWidget {
 }
 
 class _BootStageState extends State<BootStage>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _progressCtrl;
-  String _status = 'WARMING UP';
+    with TickerProviderStateMixin {
+  // Drives the progress bar fill. Animated to a per-stage ceiling — never
+  // reaches 1.0 until [_seal] is called, immediately before navigation.
+  late final AnimationController _fillCtrl;
+
+  // Drives the trailing dots after "Loading". One full cycle every 1200ms,
+  // 4 frames ⇒ 300ms per dot. Loops while the stage is mounted.
+  late final AnimationController _dotsCtrl;
+
   bool _navigated = false;
 
   @override
   void initState() {
     super.initState();
-    _progressCtrl = AnimationController(
+    _fillCtrl = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 3),
-    )..forward();
+      duration: const Duration(milliseconds: 600),
+      value: 0.0,
+    );
+    _dotsCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    )..repeat();
     _run();
   }
 
   @override
   void dispose() {
     widget.alerts.onTokenRotated = null;
-    _progressCtrl.dispose();
+    _fillCtrl.dispose();
+    _dotsCtrl.dispose();
     super.dispose();
   }
 
-  void _setStatus(String text, double progressFloor) {
+  /// Crawls the progress bar forward to [ceiling] over the configured
+  /// duration. Never goes backwards. Use during the boot pipeline to
+  /// reflect real progress — do NOT pass 1.0 here.
+  Future<void> _advanceTo(double ceiling, {Duration? over}) async {
     if (!mounted) return;
-    setState(() => _status = text);
-    if (_progressCtrl.value < progressFloor) {
-      _progressCtrl.animateTo(progressFloor,
-          duration: const Duration(milliseconds: 350));
-    }
+    final clamped = ceiling.clamp(0.0, 0.95);
+    if (_fillCtrl.value >= clamped) return;
+    await _fillCtrl.animateTo(
+      clamped,
+      duration: over ?? const Duration(milliseconds: 500),
+      curve: Curves.easeOut,
+    );
+  }
+
+  /// Snaps the bar to 100%. Called once, right before pushReplacement, so
+  /// the user only sees a fully-filled bar at the exact moment the next
+  /// screen takes over.
+  Future<void> _seal() async {
+    if (!mounted) return;
+    await _fillCtrl.animateTo(
+      1.0,
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOutCubic,
+    );
   }
 
   Future<void> _run() async {
     widget.alerts.onTokenRotated = _onTokenRotated;
     await widget.alerts.wire();
 
-    _setStatus('CHECKING ROUTE', 0.18);
+    await _advanceTo(0.18);
 
     final priorMode = widget.vault.currentMode();
     switch (priorMode) {
@@ -123,7 +152,7 @@ class _BootStageState extends State<BootStage>
       return;
     }
 
-    _setStatus('SYNCING', 0.40);
+    await _advanceTo(0.40);
     await widget.pipe.wire();
 
     final locale = _resolveLocale();
@@ -134,7 +163,7 @@ class _BootStageState extends State<BootStage>
       widget.pipe.awaitDeepLink(const Duration(seconds: 5)),
     ]);
 
-    _setStatus('NEGOTIATING', 0.62);
+    await _advanceTo(0.65);
     final body = await widget.pipe.buildPayload(
       locale: locale,
       pushToken: pushToken,
@@ -143,14 +172,14 @@ class _BootStageState extends State<BootStage>
 
     if (reply.hasUsableUrl) {
       await widget.vault.writeMode(ShellMode.portal);
-      _setStatus('READY', 1.0);
-      await Future.delayed(const Duration(milliseconds: 400));
+      await _advanceTo(0.90);
+      await _seal();
       _enterPortal(reply.targetUrl!);
     } else {
       await widget.vault.writeMode(ShellMode.arcade);
+      await _advanceTo(0.75);
       await _loadArcadeAssets();
-      _setStatus('READY', 1.0);
-      await Future.delayed(const Duration(milliseconds: 400));
+      await _seal();
       _enterArcade();
     }
   }
@@ -166,38 +195,38 @@ class _BootStageState extends State<BootStage>
     // Push URL beats everything else.
     final pushTarget = await widget.vault.consumePushTarget();
     if (pushTarget != null && pushTarget.isNotEmpty) {
-      _setStatus('READY', 1.0);
-      await Future.delayed(const Duration(milliseconds: 300));
+      await _seal();
       _enterPortal(pushTarget);
       return;
     }
 
     final cached = await widget.beacon.readCachedTarget();
 
-    _setStatus('SYNCING', 0.55);
+    await _advanceTo(0.45);
     await widget.pipe.wire();
     await Future.wait<dynamic>([
       widget.pipe.awaitConversion(const Duration(seconds: 10)),
       widget.pipe.awaitDeepLink(const Duration(seconds: 5)),
     ]);
 
-    _setStatus('NEGOTIATING', 0.78);
+    await _advanceTo(0.78);
     final body = await widget.pipe.buildPayload(
       locale: _resolveLocale(),
       pushToken: widget.alerts.currentToken,
     );
     final reply = await widget.beacon.dispatch(body);
 
-    _setStatus('READY', 1.0);
-    await Future.delayed(const Duration(milliseconds: 300));
+    await _advanceTo(0.92);
     if (!mounted) return;
 
     if (reply.hasUsableUrl) {
+      await _seal();
       _enterPortal(reply.targetUrl!);
       return;
     }
 
     if (cached != null && cached.isNotEmpty) {
+      await _seal();
       _enterPortal(cached);
     } else {
       _enterOfflineFromReturning();
@@ -207,10 +236,9 @@ class _BootStageState extends State<BootStage>
   // ── returning arcade user ─────────────────────────────────────────────
 
   Future<void> _runReturningArcade() async {
-    _setStatus('LOADING ASSETS', 0.45);
+    await _advanceTo(0.45);
     await _loadArcadeAssets();
-    _setStatus('READY', 1.0);
-    await Future.delayed(const Duration(milliseconds: 400));
+    await _seal();
     _enterArcade();
   }
 
@@ -341,7 +369,9 @@ class _BootStageState extends State<BootStage>
             ),
           ),
 
-          // Progress bar + status text near the bottom.
+          // Loading label (with animated trailing dots) + horizontal
+          // progress bar near the bottom. The bar fills left → right and
+          // only ever reaches 100% the instant before pushReplacement.
           Align(
             alignment: Alignment.bottomCenter,
             child: Padding(
@@ -350,21 +380,15 @@ class _BootStageState extends State<BootStage>
                 left: 36,
                 right: 36,
               ),
-              child: AnimatedBuilder(
-                animation: _progressCtrl,
-                builder: (context, _) {
-                  final pct =
-                      (_progressCtrl.value * 100).clamp(0, 100).toInt();
-                  return Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        '$_status   $pct%',
-                        style:
-                            neonText(size: 14, color: DZColors.cyan),
-                      ),
-                      const SizedBox(height: 10),
-                      ClipRRect(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _LoadingLabel(controller: _dotsCtrl),
+                  const SizedBox(height: 12),
+                  AnimatedBuilder(
+                    animation: _fillCtrl,
+                    builder: (context, _) {
+                      return ClipRRect(
                         borderRadius: BorderRadius.circular(10),
                         child: Container(
                           height: 12,
@@ -375,35 +399,86 @@ class _BootStageState extends State<BootStage>
                               color: DZColors.cyan.withValues(alpha: 0.5),
                             ),
                           ),
-                          child: FractionallySizedBox(
+                          child: Align(
                             alignment: Alignment.centerLeft,
-                            widthFactor: _progressCtrl.value,
-                            child: Container(
-                              decoration: BoxDecoration(
-                                gradient: const LinearGradient(
-                                  colors: [DZColors.cyan, DZColors.purple],
-                                ),
-                                borderRadius: BorderRadius.circular(10),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: DZColors.cyan
-                                        .withValues(alpha: 0.8),
-                                    blurRadius: 14,
+                            child: FractionallySizedBox(
+                              alignment: Alignment.centerLeft,
+                              widthFactor: _fillCtrl.value,
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  gradient: const LinearGradient(
+                                    colors: [
+                                      DZColors.cyan,
+                                      DZColors.purple,
+                                    ],
                                   ),
-                                ],
+                                  borderRadius: BorderRadius.circular(10),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: DZColors.cyan
+                                          .withValues(alpha: 0.8),
+                                      blurRadius: 14,
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           ),
                         ),
-                      ),
-                    ],
-                  );
-                },
+                      );
+                    },
+                  ),
+                ],
               ),
             ),
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Renders the literal text "Loading" followed by zero-to-three trailing
+/// dots that cycle in step with [controller]. Reserves a fixed-width slot
+/// for the dots so the label never visibly shifts left/right as they cycle.
+class _LoadingLabel extends StatelessWidget {
+  final AnimationController controller;
+  const _LoadingLabel({required this.controller});
+
+  static const _dotChar = '.';
+  static const _maxDots = 3;
+
+  @override
+  Widget build(BuildContext context) {
+    final base = neonText(size: 15, color: DZColors.cyan);
+    return AnimatedBuilder(
+      animation: controller,
+      builder: (context, _) {
+        // 4 frames: 0/1/2/3 dots → one full cycle per controller period.
+        final dotCount =
+            (controller.value * (_maxDots + 1)).floor() % (_maxDots + 1);
+        final visibleDots = _dotChar * dotCount;
+        final invisibleDots = _dotChar * (_maxDots - dotCount);
+        return RichText(
+          textAlign: TextAlign.center,
+          text: TextSpan(
+            style: base,
+            children: [
+              const TextSpan(text: 'Loading'),
+              TextSpan(text: visibleDots),
+              // Same characters, fully transparent — keeps the line width
+              // constant so the centered text doesn't dance horizontally.
+              TextSpan(
+                text: invisibleDots,
+                style: base.copyWith(
+                  color: Colors.transparent,
+                  shadows: const [],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

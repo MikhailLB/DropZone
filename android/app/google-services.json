@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "392692642856",
+    "project_id": "dropzone-83f3e",
+    "storage_bucket": "dropzone-83f3e.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:392692642856:android:fb5b89dc55908bad48f11d",
+        "android_client_info": {
+          "package_name": "com.dropzone.dropzonegame"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB7NGj2J7298qq8uSD4jRJ98sv10xxl9SI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

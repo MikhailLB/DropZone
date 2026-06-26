@@ -52,8 +52,5 @@ android/key.properties
 android/app/*.jks
 android/app/*.keystore
 
-# Firebase config — pulled per-developer, never committed
-android/app/google-services.json
-
 # One-off encoder tool — must never be committed (would leak plaintext)
 tool/seal_secrets.dart

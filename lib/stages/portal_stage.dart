@@ -416,11 +416,6 @@ class _PortalStageState extends State<PortalStage>
 
   @override
   Widget build(BuildContext context) {
-    final orientation = MediaQuery.of(context).orientation;
-    final topInset = orientation == Orientation.landscape
-        ? 0.0
-        : MediaQuery.of(context).viewPadding.top;
-
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) async {
@@ -435,8 +430,18 @@ class _PortalStageState extends State<PortalStage>
         body: Stack(
           fit: StackFit.expand,
           children: [
-            Padding(
-              padding: EdgeInsets.only(top: topInset),
+            // SafeArea applies viewPadding from all four sides so neither
+            // the status/gesture bars (when they slide back during the
+            // immersive-sticky reveal) NOR display cutouts — punch-holes
+            // in portrait, side notches in landscape — clip the portal
+            // content. The black Scaffold underneath fills any inset
+            // band, matching the page background.
+            SafeArea(
+              top: true,
+              bottom: true,
+              left: true,
+              right: true,
+              maintainBottomViewPadding: false,
               child: WebViewWidget(controller: _ctrl),
             ),
             if (_busy)
